@@ -1,3 +1,4 @@
+"use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
@@ -47,8 +48,9 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-import { EventAggregator } from "oj-eventaggregator";
-export var googleMapsLoader = function (key) {
+Object.defineProperty(exports, "__esModule", { value: true });
+var oj_eventaggregator_1 = require("oj-eventaggregator");
+exports.googleMapsLoader = function (key) {
     return new Promise(function (res) {
         var cbFnHash = "gml_" + Math.random().toString(36).substring(7);
         window[cbFnHash] = function () { return res(window["google"]); };
@@ -59,30 +61,96 @@ export var googleMapsLoader = function (key) {
 };
 var Geocoder = /** @class */ (function (_super) {
     __extends(Geocoder, _super);
-    function Geocoder(options) {
+    function Geocoder(key) {
         var _this = _super.call(this) || this;
-        googleMapsLoader(options.key)
+        exports.googleMapsLoader(key)
             .then(function (google) {
             _this.google = google;
-            _this.emit("load");
+            _this.emit("load", _this);
         });
         return _this;
     }
-    Geocoder.prototype.load = function () {
-        var _this = this;
-        if (this.google !== undefined)
-            return Promise.resolve(this.google);
-        return new Promise(function (res) { return _this.once("load", function () { return res(_this.google); }); });
+    // load() {
+    //   if (this.google !== undefined) return Promise.resolve(this.google)
+    //   return new Promise<any>(res => this.once("load", () => res(this.google)))
+    // }
+    Geocoder.prototype.find = function (search) {
+        return __awaiter(this, void 0, void 0, function () {
+            var results, _a, cache;
+            var _this = this;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        _a = this.geocodeLatLng;
+                        return [4 /*yield*/, this.findLatLng(search)];
+                    case 1: return [4 /*yield*/, _a.apply(this, [_b.sent()])];
+                    case 2:
+                        results = _b.sent();
+                        cache = {};
+                        return [2 /*return*/, {
+                                results: results,
+                                getCountry: function () {
+                                    if (!cache["getCountry"])
+                                        cache["getCountry"] = _this.firstResult(results, "country");
+                                    return cache["getCountry"];
+                                },
+                                getProvince: function () {
+                                    if (!cache["getProvince"])
+                                        cache["getProvince"] = _this.firstResult(results, "administrative_area_level_1");
+                                    return cache["getProvince"];
+                                },
+                                getCity: function () {
+                                    if (!cache["getCity"])
+                                        cache["getCity"] = _this.firstResult(results, "locality");
+                                    return cache["getCity"];
+                                },
+                                getCitySub: function () {
+                                    if (!cache["getCitySub"])
+                                        cache["getCitySub"] = _this.firstResult(results, "sublocality");
+                                    return cache["getCitySub"];
+                                },
+                                getPostalCode: function () {
+                                    if (!cache["getPostalCode"])
+                                        cache["getPostalCode"] = _this.firstResult(results, "postal_code");
+                                    return cache["getPostalCode"];
+                                },
+                                getStreet: function () {
+                                    if (!cache["getStreet"])
+                                        cache["getStreet"] = _this.firstResult(results, "route");
+                                    return cache["getStreet"];
+                                },
+                                getStreetNumber: function () {
+                                    if (!cache["getStreetNumber"])
+                                        cache["getStreetNumber"] = _this.firstResult(results, "street_number");
+                                    return cache["getStreetNumber"];
+                                },
+                            }];
+                }
+            });
+        });
+    };
+    Geocoder.prototype.firstResult = function (results, type) {
+        for (var _i = 0, results_1 = results; _i < results_1.length; _i++) {
+            var a = results_1[_i].address_components;
+            var r = a.find(function (x) { return x.types.includes(type); });
+            if (r)
+                return r.long_name;
+        }
+        return null;
     };
     Geocoder.prototype.geocode = function (search) {
-        var _this = this;
-        return new Promise(function (res, rej) {
-            var geocoder = new _this.google.maps.Geocoder();
-            geocoder.geocode(search, function (results, status) {
-                if (status == _this.google.maps.GeocoderStatus.OK)
-                    res(results);
-                else
-                    rej(status);
+        return __awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            return __generator(this, function (_a) {
+                return [2 /*return*/, new Promise(function (res, rej) {
+                        var geocoder = new _this.google.maps.Geocoder();
+                        geocoder.geocode(search, function (results, status) {
+                            if (status == _this.google.maps.GeocoderStatus.OK)
+                                res(results);
+                            else
+                                rej(status);
+                        });
+                    })];
             });
         });
     };
@@ -91,11 +159,8 @@ var Geocoder = /** @class */ (function (_super) {
             var results, lat, lng;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: return [4 /*yield*/, this.load()];
+                    case 0: return [4 /*yield*/, this.geocode(search)];
                     case 1:
-                        _a.sent();
-                        return [4 /*yield*/, this.geocode(search)];
-                    case 2:
                         results = _a.sent();
                         lat = results[0].geometry.location.lat();
                         lng = results[0].geometry.location.lng();
@@ -108,24 +173,12 @@ var Geocoder = /** @class */ (function (_super) {
         return __awaiter(this, void 0, void 0, function () {
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: return [4 /*yield*/, this.load()];
-                    case 1:
-                        _a.sent();
-                        return [4 /*yield*/, this.geocode({ location: ltLng })];
-                    case 2: return [2 /*return*/, _a.sent()];
+                    case 0: return [4 /*yield*/, this.geocode({ location: ltLng })];
+                    case 1: return [2 /*return*/, _a.sent()];
                 }
             });
         });
     };
-    Geocoder.prototype.getPostalCode = function (result) {
-        return result.address_components.find(function (x) { return x.types.indexOf("postal_code") !== -1; }).long_name;
-    };
-    Geocoder.prototype.getStreet = function (result) {
-        return result.address_components.find(function (x) { return x.types.indexOf("route") !== -1; }).long_name;
-    };
-    Geocoder.prototype.getCity = function (result) {
-        return result.address_components.find(function (x) { return x.types.indexOf("locality") !== -1; }).long_name;
-    };
     return Geocoder;
-}(EventAggregator));
-export { Geocoder };
+}(oj_eventaggregator_1.EventAggregator));
+exports.Geocoder = Geocoder;
